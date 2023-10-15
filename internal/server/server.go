@@ -22,7 +22,7 @@ func Build(logger *config.Logger) *chi.Mux {
 	r.Get("/", rootRoute)
 
 	// Handlers
-	auth.BuildAuthRouteHandler(r, logger)
+	auth.Routes(r, logger)
 	return r
 }
 

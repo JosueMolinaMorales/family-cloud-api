@@ -9,7 +9,7 @@ import (
 
 // BuildAuthRouteHandler builds the routes for the auth handler
 // and adds them to the given router
-func BuildAuthRouteHandler(r *chi.Mux, logger *config.Logger) {
+func Routes(r *chi.Mux, logger *config.Logger) {
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", login)
 		r.Post("/register", register)
