@@ -18,6 +18,22 @@ const (
 	// DBURI specifies the URI for the database
 	// Required for dev, and prod
 	DB_URI = "DB_URI"
+
+	// GOOGLE_CLIENT_ID specifies the client id for the google oauth2
+	// Required for dev, and prod
+	GOOGLE_CLIENT_ID = "GOOGLE_CLIENT_ID"
+
+	// GOOGLE_CLIENT_SECRET specifies the client secret for the google oauth2
+	// Required for dev, and prod
+	GOOGLE_CLIENT_SECRET = "GOOGLE_CLIENT_SECRET"
+
+	// GOOGLE_REDIRECT_URL specifies the redirect url for the google oauth2
+	// Required for dev, and prod
+	GOOGLE_REDIRECT_URL = "GOOGLE_REDIRECT_URL"
+
+	// GOOGLE_STATE specifies the state for the google oauth2
+	// Required for dev, and prod
+	GOOGLE_STATE = "GOOGLE_STATE"
 )
 
 var (
@@ -25,7 +41,7 @@ var (
 	EnvVars *EnvConfig = newEnvConfig()
 
 	// Required is the list of required environment variables for all environments
-	required = []string{PORT, ENV, DB_URI}
+	required = []string{PORT, ENV, DB_URI, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URL}
 
 	// DevRequired is the list of required environment variables for the development environment
 	devRequired = []string{}
@@ -43,7 +59,7 @@ type EnvConfig struct {
 func newEnvConfig() *EnvConfig {
 	env, err := godotenv.Read()
 	if err != nil {
-		fmt.Println("Error loading .env file")
+		fmt.Println("No .env file found.")
 	}
 
 	config := &EnvConfig{
@@ -91,10 +107,10 @@ func (e *EnvConfig) GetEnv() string {
 }
 
 // Get returns the value of a specific environment variable
-func (e *EnvConfig) Get(key string) (string, bool) {
+func (e *EnvConfig) Get(key string) string {
 	if e.env[key] == "" {
-		return "", false
+		panic(fmt.Sprintf("%s environment variable is not set", key))
 	}
 
-	return e.env[key], true
+	return e.env[key]
 }
