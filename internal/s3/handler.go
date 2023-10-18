@@ -11,12 +11,16 @@ import (
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
 	aws_config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 )
 
 func Routes(r *chi.Mux, logger *config.Logger) {
 	r.Route("/s3", func(r chi.Router) {
 		r.Get("/list", listObjects)
+		r.Get("/folder", listFolder)
+		r.Get("/folder/size", getFolderSize)
 	})
 }
 
@@ -97,6 +101,8 @@ func (f *File) IsDirectory() bool {
 }
 
 // listObjects lists all the objects in the bucket
+// This method gets a list of all the objects in the bucket, then builds a file tree
+// based on the keys of the objects. This method allows for collection of size of folders
 func listObjects(w http.ResponseWriter, r *http.Request) {
 	cfg, err := aws_config.LoadDefaultConfig(context.TODO(), aws_config.WithSharedConfigProfile("personal"), aws_config.WithRegion("us-east-1"))
 	if err != nil {
@@ -105,13 +111,7 @@ func listObjects(w http.ResponseWriter, r *http.Request) {
 	// Create an Amazon S3 service client
 	client := s3.NewFromConfig(cfg)
 	bucket := "morales-storage-drive"
-	res, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
-		Bucket: &bucket,
-	})
-	if err != nil {
-		panic("failed to list objects, " + err.Error())
-	}
-
+	var continuationToken *string
 	// Create root folder
 	folder := &Folder{
 		Name:         "/",
@@ -120,15 +120,31 @@ func listObjects(w http.ResponseWriter, r *http.Request) {
 		LastModified: time.Now(),
 		IsDir:        true,
 	}
-	fmt.Println(len(res.Contents))
-	for _, item := range res.Contents {
-		if item.Key == nil {
-			continue
+
+	for {
+		res, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+			Bucket:            &bucket,
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			panic("failed to list objects, " + err.Error())
 		}
-		buildFileTree(folder, *item.Key, item.Size)
-		// add the size of the file
-		folder.Size += item.Size
+		fmt.Println(len(res.Contents))
+		for _, item := range res.Contents {
+			if item.Key == nil {
+				continue
+			}
+			buildFileTree(folder, *item.Key, item.Size, *item.LastModified)
+			// add the size of the file
+			folder.Size += item.Size
+		}
+		if !res.IsTruncated {
+			break
+		} else {
+			continuationToken = res.NextContinuationToken
+		}
 	}
+
 	// Print the file tree
 	json, err := json.Marshal(folder)
 	if err != nil {
@@ -141,7 +157,7 @@ func listObjects(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
-func buildFileTree(root *Folder, path string, size int64) {
+func buildFileTree(root *Folder, path string, size int64, lastModified time.Time) {
 	pathParts := strings.Split(path, "/")
 	fileName := pathParts[len(pathParts)-1]
 
@@ -168,7 +184,7 @@ func buildFileTree(root *Folder, path string, size int64) {
 	root.Items = append(root.Items, &File{
 		Name:         fileName,
 		Size:         size,
-		LastModified: time.Now(),
+		LastModified: lastModified,
 	})
 }
 
@@ -188,4 +204,139 @@ func containsFolder(folders []FileItem, name string) bool {
 		}
 	}
 	return false
+}
+
+// listFolder lists all the items within a prefix in the bucket
+// this method returns a file tree of the items within the prefix
+// including files and folders. This method does not allow for collection
+// of folder sizes
+func listFolder(w http.ResponseWriter, r *http.Request) {
+	cfg, err := aws_config.LoadDefaultConfig(context.TODO(), aws_config.WithSharedConfigProfile("personal"), aws_config.WithRegion("us-east-1"))
+	if err != nil {
+		panic("unable to load SDK config, " + err.Error())
+	}
+	// Create an Amazon S3 service client
+	client := s3.NewFromConfig(cfg)
+	bucket := "morales-storage-drive"
+
+	prefix := r.URL.Query().Get("prefix")
+
+	if prefix != "" {
+		prefix = fmt.Sprintf("%s/", prefix)
+	}
+	res, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+		Bucket:    &bucket,
+		Prefix:    &prefix,
+		Delimiter: aws.String("/"),
+	})
+	if err != nil {
+		panic("failed to list objects, " + err.Error())
+	}
+
+	if prefix == "" {
+		prefix = "/"
+	}
+	root := &Folder{
+		Name:         prefix,
+		Size:         0,
+		Items:        make([]FileItem, 0),
+		LastModified: time.Now(),
+		IsDir:        true,
+	}
+
+	// Get the files in this folder
+	fmt.Println(len(res.Contents))
+	for _, item := range res.Contents {
+		if item.Key == nil {
+			continue
+		}
+		fileParts := strings.Split(*item.Key, "/")
+		fileName := fileParts[len(fileParts)-1]
+		root.Items = append(root.Items, &File{
+			Name:         fileName,
+			Size:         item.Size,
+			LastModified: *item.LastModified,
+			IsDir:        false,
+		})
+	}
+	fmt.Println(len(res.CommonPrefixes))
+	// Get the folders in this folder
+	for _, item := range res.CommonPrefixes {
+		if item.Prefix == nil {
+			continue
+		}
+		folderParts := strings.Split(*item.Prefix, "/")
+		folderName := folderParts[len(folderParts)-2]
+		root.Items = append(root.Items, &Folder{
+			Name:  folderName,
+			Size:  0,
+			Items: make([]FileItem, 0),
+			IsDir: true,
+		})
+	}
+
+	// Return the results
+	render.JSON(w, r, root)
+}
+
+// getFolderSize returns the size of a folder given a prefix
+func getFolderSize(w http.ResponseWriter, r *http.Request) {
+	cfg, err := aws_config.LoadDefaultConfig(context.TODO(), aws_config.WithSharedConfigProfile("personal"), aws_config.WithRegion("us-east-1"))
+	if err != nil {
+		panic("unable to load SDK config, " + err.Error())
+	}
+	// Create an Amazon S3 service client
+	client := s3.NewFromConfig(cfg)
+	bucket := "morales-storage-drive"
+
+	prefix := r.URL.Query().Get("prefix")
+
+	if prefix != "" {
+		prefix = fmt.Sprintf("%s/", prefix)
+	}
+
+	size, err := calculateFolderSize(client, bucket, prefix)
+	if err != nil {
+		panic("failed to calculate folder size, " + err.Error())
+	}
+
+	// Return the results
+	render.JSON(w, r, struct {
+		Size int64 `json:"size"`
+	}{
+		Size: size,
+	})
+}
+
+func calculateFolderSize(client *s3.Client, bucket string, prefix string) (int64, error) {
+	var continuationToken *string
+
+	var size int64
+	for {
+		res, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
+			Bucket:            &bucket,
+			Prefix:            &prefix,
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			panic("failed to list objects, " + err.Error())
+		}
+
+		// Get the files in this folder
+		fmt.Println(len(res.Contents))
+		for _, item := range res.Contents {
+			if item.Key == nil {
+				continue
+			}
+			size += item.Size
+		}
+
+		if !res.IsTruncated {
+			break
+		} else {
+			continuationToken = res.NextContinuationToken
+		}
+	}
+
+	return size, nil
 }
