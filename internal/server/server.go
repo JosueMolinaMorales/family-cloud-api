@@ -3,16 +3,17 @@ package server
 import (
 	"net/http"
 
-	"github.com/JosueMolinaMorales/family-cloud-api/internal/auth"
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
-	"github.com/JosueMolinaMorales/family-cloud-api/internal/s3"
+	"github.com/JosueMolinaMorales/family-cloud-api/pkg/auth"
+	"github.com/JosueMolinaMorales/family-cloud-api/pkg/s3"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 )
 
-func Build(logger *config.Logger) *chi.Mux {
+// Build creates a new router and adds the routes to it
+func Build(logger config.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middlewares
@@ -33,8 +34,11 @@ func Build(logger *config.Logger) *chi.Mux {
 	r.Get("/", rootRoute)
 
 	// Handlers
-	auth.Routes(r, logger)
-	s3.Routes(r, logger)
+	r.Mount("/auth", auth.Routes())
+	r.Mount("/s3", s3.Routes(s3.NewController(logger, config.NewAwsDriver(logger))))
+
+	// Print routes
+	printEstablishedRoutes(r, logger)
 	return r
 }
 
@@ -43,4 +47,14 @@ func rootRoute(w http.ResponseWriter, r *http.Request) {
 		Message string `json:"message"`
 	}{Message: "Hello World"}
 	render.JSON(w, r, message)
+}
+
+func printEstablishedRoutes(r *chi.Mux, logger config.Logger) {
+	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		logger.Info("Route Established: ", method, " - ", route)
+		return nil
+	}
+	if err := chi.Walk(r, walkFunc); err != nil {
+		logger.Error("Error while printing routes: ", err.Error())
+	}
 }

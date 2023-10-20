@@ -16,12 +16,12 @@ import (
 	"google.golang.org/api/idtoken"
 )
 
-// BuildAuthRouteHandler builds the routes for the auth handler
-// and adds them to the given router
-func Routes(r *chi.Mux, logger *config.Logger) {
-	r.Route("/auth", func(r chi.Router) {
-		r.Post("/google/sso", googleCallback)
-	})
+// Routes returns the routes for the auth package
+func Routes() *chi.Mux {
+	router := chi.NewRouter()
+	router.Get("/google/sso", googleCallback)
+
+	return router
 }
 
 // googleCallback handles the callback from google
