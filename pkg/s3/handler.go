@@ -4,7 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
+	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 )
@@ -15,19 +16,20 @@ func Routes(controller Controller) *chi.Mux {
 
 	h := &handler{
 		controller: controller,
-		logger:     config.NewLogger().With(context.Background(), "Version", "1.0.0"),
+		logger:     log.NewLogger().With(context.Background(), "Version", "1.0.0"),
 	}
 
 	r.Get("/list", h.ListObjects)
 	r.Get("/folder", h.GetFolderSize)
 	r.Get("/folder/size", h.GetFolderSize)
 
+	// Set middleware for error handling
 	return r
 }
 
 type handler struct {
 	controller Controller
-	logger     config.Logger
+	logger     log.Logger
 }
 
 // listObjects lists all the objects in the bucket
@@ -36,7 +38,8 @@ type handler struct {
 func (h *handler) ListObjects(w http.ResponseWriter, r *http.Request) {
 	tree, err := h.controller.ListObjects()
 	if err != nil {
-		panic("failed to list objects, " + err.Error())
+		error.HandleError(w, r, err)
+		return
 	}
 
 	render.JSON(w, r, tree)
@@ -49,7 +52,8 @@ func (h *handler) ListObjects(w http.ResponseWriter, r *http.Request) {
 func (h *handler) ListFolder(w http.ResponseWriter, r *http.Request) {
 	folder, err := h.controller.ListFolder(r.URL.Query().Get("prefix"))
 	if err != nil {
-		panic("failed to list folder, " + err.Error())
+		error.HandleError(w, r, err)
+		return
 	}
 
 	render.JSON(w, r, folder)
@@ -59,7 +63,8 @@ func (h *handler) ListFolder(w http.ResponseWriter, r *http.Request) {
 func (h *handler) GetFolderSize(w http.ResponseWriter, r *http.Request) {
 	size, err := h.controller.GetFolderSize(r.URL.Query().Get("prefix"))
 	if err != nil {
-		panic("failed to get folder size, " + err.Error())
+		error.HandleError(w, r, err)
+		return
 	}
 
 	render.JSON(w, r, struct {

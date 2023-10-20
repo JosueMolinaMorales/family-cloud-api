@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/auth"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/s3"
 	"github.com/go-chi/chi/v5"
@@ -13,7 +14,7 @@ import (
 )
 
 // Build creates a new router and adds the routes to it
-func Build(logger config.Logger) *chi.Mux {
+func Build(logger log.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middlewares
@@ -49,7 +50,7 @@ func rootRoute(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, message)
 }
 
-func printEstablishedRoutes(r *chi.Mux, logger config.Logger) {
+func printEstablishedRoutes(r *chi.Mux, logger log.Logger) {
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		logger.Info("Route Established: ", method, " - ", route)
 		return nil

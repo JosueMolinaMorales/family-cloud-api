@@ -1,5 +1,5 @@
 // Package log provides context-aware and structured logging capabilities.
-package config
+package log
 
 import (
 	"context"

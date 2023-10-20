@@ -6,11 +6,12 @@ import (
 	"net/http"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/server"
 )
 
 func main() {
-	logger := config.NewLogger().With(context.TODO(), "Version", "1.0.0")
+	logger := log.NewLogger().With(context.TODO(), "Version", "1.0.0")
 	server := server.Build(logger)
 	port := config.EnvVars.GetPort()
 

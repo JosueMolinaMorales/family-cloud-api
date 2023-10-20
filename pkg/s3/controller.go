@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
+	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go/aws"
@@ -14,16 +16,16 @@ import (
 
 // Controller is the interface for the s3 controller
 type Controller interface {
-	ListObjects() (*types.Folder, error)
-	ListFolder(prefix string) (*types.Folder, error)
-	GetFolderSize(prefix string) (int64, error)
+	ListObjects() (*types.Folder, *error.RequestError)
+	ListFolder(prefix string) (*types.Folder, *error.RequestError)
+	GetFolderSize(prefix string) (int64, *error.RequestError)
 	GetObject()
 	UploadObject()
 	DeleteObject()
 }
 
 // NewController creates a new controller
-func NewController(logger config.Logger, s3Client config.AwsDriver) Controller {
+func NewController(logger log.Logger, s3Client config.AwsDriver) Controller {
 	return &controller{
 		logger:   logger,
 		s3Client: s3Client,
@@ -31,11 +33,11 @@ func NewController(logger config.Logger, s3Client config.AwsDriver) Controller {
 }
 
 type controller struct {
-	logger   config.Logger
+	logger   log.Logger
 	s3Client config.AwsDriver
 }
 
-func (c *controller) ListObjects() (*types.Folder, error) {
+func (c *controller) ListObjects() (*types.Folder, *error.RequestError) {
 	bucket := "morales-storage-drive"
 	var continuationToken *string
 	// Create root folder
@@ -47,13 +49,18 @@ func (c *controller) ListObjects() (*types.Folder, error) {
 		IsDir:        true,
 	}
 
+	// Set a timeout for the request
+	// if the request takes longer than 5 seconds, cancel it
+	ctx, cancel := context.WithTimeout(nil, 5*time.Second)
+	defer cancel()
+
 	for {
-		res, err := c.s3Client.ListObjects(context.TODO(), &s3.ListObjectsV2Input{
+		res, err := c.s3Client.ListObjects(ctx, &s3.ListObjectsV2Input{
 			Bucket:            &bucket,
 			ContinuationToken: continuationToken,
 		})
 		if err != nil {
-			panic("failed to list objects, " + err.Error())
+			return nil, err
 		}
 
 		for _, item := range res.Contents {
@@ -74,7 +81,7 @@ func (c *controller) ListObjects() (*types.Folder, error) {
 	return folder, nil
 }
 
-func (c *controller) ListFolder(prefix string) (*types.Folder, error) {
+func (c *controller) ListFolder(prefix string) (*types.Folder, *error.RequestError) {
 	bucket := "morales-storage-drive"
 
 	if prefix != "" {
@@ -86,7 +93,7 @@ func (c *controller) ListFolder(prefix string) (*types.Folder, error) {
 		Delimiter: aws.String("/"),
 	})
 	if err != nil {
-		panic("failed to list objects, " + err.Error())
+		return nil, err
 	}
 
 	if prefix == "" {
@@ -136,7 +143,7 @@ func (c *controller) GetObject() {
 	panic("not implemented")
 }
 
-func (c *controller) GetFolderSize(prefix string) (int64, error) {
+func (c *controller) GetFolderSize(prefix string) (int64, *error.RequestError) {
 	bucket := "morales-storage-drive"
 
 	if prefix != "" {
@@ -145,7 +152,7 @@ func (c *controller) GetFolderSize(prefix string) (int64, error) {
 
 	size, err := c.calculateFolderSize(bucket, prefix)
 	if err != nil {
-		panic("failed to calculate folder size, " + err.Error())
+		return -1, err
 	}
 
 	return size, nil
@@ -159,7 +166,7 @@ func (c *controller) DeleteObject() {
 	panic("not implemented")
 }
 
-func (c *controller) calculateFolderSize(bucket string, prefix string) (int64, error) {
+func (c *controller) calculateFolderSize(bucket string, prefix string) (int64, *error.RequestError) {
 	var continuationToken *string
 
 	var size int64
@@ -170,7 +177,7 @@ func (c *controller) calculateFolderSize(bucket string, prefix string) (int64, e
 			ContinuationToken: continuationToken,
 		})
 		if err != nil {
-			panic("failed to list objects, " + err.Error())
+			return -1, err
 		}
 
 		// Get the files in this folder
