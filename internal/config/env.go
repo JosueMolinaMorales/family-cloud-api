@@ -7,15 +7,15 @@ import (
 )
 
 const (
-	// Port specifies the port where the server will be listening
+	// PORT specifies the port where the server will be listening
 	// Required for dev, and prod
 	PORT = "PORT"
 
-	// Env specifies the environment where the server will be running
+	// ENV specifies the environment where the server will be running
 	// Required for dev, and prod
 	ENV = "ENV"
 
-	// DBURI specifies the URI for the database
+	// DB_URI specifies the URI for the database
 	// Required for dev, and prod
 	DB_URI = "DB_URI"
 
@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	// Env is the struct holding the environment variables
+	// EnvVars is the struct holding the environment variables
 	EnvVars *EnvConfig = newEnvConfig()
 
 	// Required is the list of required environment variables for all environments
