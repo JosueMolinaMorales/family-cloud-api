@@ -3,6 +3,7 @@ package s3
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
@@ -20,7 +21,7 @@ func Routes(controller Controller) *chi.Mux {
 	}
 
 	r.Get("/list", h.ListObjects)
-	r.Get("/folder", h.GetFolderSize)
+	r.Get("/folder", h.ListFolder)
 	r.Get("/folder/size", h.GetFolderSize)
 
 	// Set middleware for error handling
@@ -55,23 +56,38 @@ func (h *handler) ListFolder(w http.ResponseWriter, r *http.Request) {
 		error.HandleError(w, r, err)
 		return
 	}
-
 	render.JSON(w, r, folder)
 }
 
 // GetFolderSize returns the size of a folder
 func (h *handler) GetFolderSize(w http.ResponseWriter, r *http.Request) {
-	size, err := h.controller.GetFolderSize(r.URL.Query().Get("prefix"))
-	if err != nil {
-		error.HandleError(w, r, err)
-		return
-	}
+	// Set a timeout for the request
+	ctx, cancel := context.WithTimeout(r.Context(), time.Millisecond*500)
+	defer cancel()
 
-	render.JSON(w, r, struct {
-		Size int64 `json:"size"`
-	}{
-		Size: size,
-	})
+	ch := make(chan int64)
+	go func() {
+		size, err := h.controller.GetFolderSize(r.URL.Query().Get("prefix"))
+		if err != nil {
+			error.HandleError(w, r, err)
+			return
+		}
+		ch <- size
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			// Timeout
+			error.HandleError(w, r, error.NewRequestError(ctx.Err(), error.BadRequestError, "Timeout", h.logger))
+			return
+		case size := <-ch:
+			render.JSON(w, r, struct {
+				Size int64 `json:"size"`
+			}{Size: size})
+			return
+		}
+	}
 }
 
 func (h *handler) GetObject(w http.ResponseWriter, r *http.Request) {

@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
@@ -16,13 +17,14 @@ type AwsDriver interface {
 
 // NewAwsDriver creates a new aws driver
 func NewAwsDriver(logger log.Logger) AwsDriver {
-	cfg, err := aws_config.LoadDefaultConfig(context.Background())
+	cfg, err := aws_config.LoadDefaultConfig(context.Background(), aws_config.WithRegion("us-east-1"), aws_config.WithSharedConfigProfile("personal"))
 	if err != nil {
 		panic(err)
 	}
 
 	return &awsDriver{
 		client: s3.NewFromConfig(cfg),
+		logger: logger,
 	}
 }
 
@@ -34,6 +36,7 @@ type awsDriver struct {
 func (a *awsDriver) ListObjects(ctx context.Context, params *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, *error.RequestError) {
 	res, err := a.client.ListObjectsV2(ctx, params)
 	if err != nil {
+		fmt.Println(err)
 		// check if error is a context error
 		if err.Error() == context.Canceled.Error() {
 			return nil, error.NewRequestError(err, error.BadRequestError, "request timed out", a.logger)
