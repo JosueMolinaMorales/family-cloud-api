@@ -2,6 +2,7 @@ package s3
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
@@ -22,6 +23,7 @@ func Routes(controller Controller) *chi.Mux {
 	r.Get("/list", h.ListObjects)
 	r.Get("/folder", h.GetFolderSize)
 	r.Get("/folder/size", h.GetFolderSize)
+	r.Post("/upload", h.UploadObject)
 
 	// Set middleware for error handling
 	return r
@@ -30,6 +32,33 @@ func Routes(controller Controller) *chi.Mux {
 type handler struct {
 	controller Controller
 	logger     log.Logger
+}
+
+func (h *handler) UploadObject(w http.ResponseWriter, r *http.Request) {
+	// TODO: Look into DTOs
+	// Get the body of the request
+	var body struct {
+		File string `json:"file"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		error.HandleError(w, r, error.NewRequestError(err, error.BadRequestError, "invalid request body", h.logger))
+		return
+	}
+
+	// Get the presigned url
+	url, err := h.controller.UploadObject(body.File)
+	if err != nil {
+		error.HandleError(w, r, err)
+		return
+	}
+
+	// Return the url
+	render.JSON(w, r, struct {
+		URL string `json:"url"`
+	}{
+		URL: url,
+	})
 }
 
 // listObjects lists all the objects in the bucket
@@ -77,8 +106,8 @@ func (h *handler) GetFolderSize(w http.ResponseWriter, r *http.Request) {
 func (h *handler) GetObject(w http.ResponseWriter, r *http.Request) {
 }
 
-func (h *handler) UploadObject(w http.ResponseWriter, r *http.Request) {
+func (h *handler) DeleteObject(w http.ResponseWriter, r *http.Request) {
 }
 
-func (h *handler) DeleteObject(w http.ResponseWriter, r *http.Request) {
+func (h *handler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 }

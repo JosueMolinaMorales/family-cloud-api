@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"time"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
@@ -12,6 +13,7 @@ import (
 // AwsDriver is the interface for the aws driver
 type AwsDriver interface {
 	ListObjects(ctx context.Context, params *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, *error.RequestError)
+	UploadObject(ctx context.Context, params *s3.PutObjectInput) (string, *error.RequestError)
 }
 
 // NewAwsDriver creates a new aws driver
@@ -29,6 +31,16 @@ func NewAwsDriver(logger log.Logger) AwsDriver {
 type awsDriver struct {
 	client *s3.Client
 	logger log.Logger
+}
+
+func (a *awsDriver) UploadObject(ctx context.Context, params *s3.PutObjectInput) (string, *error.RequestError) {
+	pc := s3.NewPresignClient(a.client)
+	presignedURL, err := pc.PresignPutObject(ctx, params, s3.WithPresignExpires(time.Minute*15))
+	if err != nil {
+		return "", error.NewRequestError(err, error.InternalServerError, "failed to upload object", a.logger)
+	}
+
+	return presignedURL.URL, nil
 }
 
 func (a *awsDriver) ListObjects(ctx context.Context, params *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, *error.RequestError) {

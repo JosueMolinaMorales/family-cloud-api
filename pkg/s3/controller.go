@@ -20,7 +20,7 @@ type Controller interface {
 	ListFolder(prefix string) (*types.Folder, *error.RequestError)
 	GetFolderSize(prefix string) (int64, *error.RequestError)
 	GetObject()
-	UploadObject()
+	UploadObject(file string) (string, *error.RequestError)
 	DeleteObject()
 }
 
@@ -158,8 +158,16 @@ func (c *controller) GetFolderSize(prefix string) (int64, *error.RequestError) {
 	return size, nil
 }
 
-func (c *controller) UploadObject() {
-	panic("not implemented")
+func (c *controller) UploadObject(file string) (string, *error.RequestError) {
+	url, err := c.s3Client.UploadObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: aws.String("morales-storage-drive"),
+		Key:    aws.String(file),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return url, nil
 }
 
 func (c *controller) DeleteObject() {
