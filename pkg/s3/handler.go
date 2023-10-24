@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/middleware"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -21,6 +22,7 @@ func Routes(controller Controller) *chi.Mux {
 		logger:     log.NewLogger().With(context.Background(), "Version", "1.0.0"),
 	}
 
+	r.Use(middleware.AuthMiddlware)
 	r.Get("/list", h.ListObjects)
 	r.Get("/folder", h.ListFolder)
 	r.Get("/folder/size", h.GetFolderSize)

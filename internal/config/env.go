@@ -37,6 +37,9 @@ const (
 
 	// COGNITO_AUTH_HOST specifies the auth host for cognito
 	COGNITO_AUTH_HOST = "COGNITO_AUTH_HOST"
+
+	// COGNITO_JWKS_URL specifies the jwks url for cognito
+	COGNITO_JWKS_URL = "COGNITO_JWKS_URL"
 )
 
 var (
@@ -48,6 +51,7 @@ var (
 		PORT, ENV, DB_URI,
 		CLIENT_URL, COGNITO_CLIENT_ID,
 		COGNITO_CLIENT_SECRET, COGNITO_REDIRECT_URL, COGNITO_AUTH_HOST,
+		COGNITO_JWKS_URL,
 	}
 
 	// DevRequired is the list of required environment variables for the development environment
