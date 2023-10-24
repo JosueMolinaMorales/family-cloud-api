@@ -19,21 +19,24 @@ const (
 	// Required for dev, and prod
 	DB_URI = "DB_URI"
 
-	// GOOGLE_CLIENT_ID specifies the client id for the google oauth2
+	// CLIENT_URL specifies the URL for the client
 	// Required for dev, and prod
-	GOOGLE_CLIENT_ID = "GOOGLE_CLIENT_ID"
+	CLIENT_URL = "CLIENT_URL"
 
-	// GOOGLE_CLIENT_SECRET specifies the client secret for the google oauth2
+	// COGNITO_CLIENT_ID specifies the client id for cognito
 	// Required for dev, and prod
-	GOOGLE_CLIENT_SECRET = "GOOGLE_CLIENT_SECRET"
+	COGNITO_CLIENT_ID = "COGNITO_CLIENT_ID"
 
-	// GOOGLE_REDIRECT_URL specifies the redirect url for the google oauth2
+	// COGNITO_CLIENT_SECRET specifies the client secret for cognito
 	// Required for dev, and prod
-	GOOGLE_REDIRECT_URL = "GOOGLE_REDIRECT_URL"
+	COGNITO_CLIENT_SECRET = "COGNITO_CLIENT_SECRET"
 
-	// GOOGLE_STATE specifies the state for the google oauth2
+	// COGNITO_REDIRECT_URL specifies the redirect url for cognito
 	// Required for dev, and prod
-	GOOGLE_STATE = "GOOGLE_STATE"
+	COGNITO_REDIRECT_URL = "COGNITO_REDIRECT_URL"
+
+	// COGNITO_AUTH_HOST specifies the auth host for cognito
+	COGNITO_AUTH_HOST = "COGNITO_AUTH_HOST"
 )
 
 var (
@@ -41,7 +44,11 @@ var (
 	EnvVars *EnvConfig = newEnvConfig()
 
 	// Required is the list of required environment variables for all environments
-	required = []string{PORT, ENV, DB_URI, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URL}
+	required = []string{
+		PORT, ENV, DB_URI,
+		CLIENT_URL, COGNITO_CLIENT_ID,
+		COGNITO_CLIENT_SECRET, COGNITO_REDIRECT_URL, COGNITO_AUTH_HOST,
+	}
 
 	// DevRequired is the list of required environment variables for the development environment
 	devRequired = []string{}

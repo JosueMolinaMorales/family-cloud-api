@@ -7,140 +7,47 @@ import (
 	"time"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
-	"github.com/JosueMolinaMorales/family-cloud-api/pkg/types"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
+	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
 	"github.com/go-chi/chi/v5"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
-	"google.golang.org/api/idtoken"
 )
 
 // Routes returns the routes for the auth package
-func Routes() *chi.Mux {
+func Routes(controller AuthController) *chi.Mux {
 	router := chi.NewRouter()
-	router.Get("/google/sso", googleCallback)
+
+	h := &handler{
+		controller: controller,
+		logger:     log.NewLogger().With(context.Background(), "Version", "1.0.0"),
+	}
+
+	router.Get("/cognito/callback", h.CognitoCallback)
 
 	return router
 }
 
-// googleCallback handles the callback from google
-func googleCallback(w http.ResponseWriter, r *http.Request) {
-	// TODO: Extract this to controller
-	credential := r.FormValue("credential")
-	if credential == "" {
-		// TODO: Handle error
-		fmt.Println("credential is empty")
-		return
-	}
+type handler struct {
+	controller AuthController
+	logger     log.Logger
+}
 
-	csrfToken := r.FormValue("g_csrf_token")
-	if csrfToken == "" {
-		// TODO: Handle error
-		fmt.Println("csrfToken is empty")
-		return
-	}
-
-	// Decdode credential
-	// Get the google public key
-	payload, err := idtoken.Validate(context.Background(), credential, config.EnvVars.Get(config.GOOGLE_CLIENT_ID))
+func (h *handler) CognitoCallback(w http.ResponseWriter, r *http.Request) {
+	clientUrl := config.EnvVars.Get(config.CLIENT_URL)
+	token, err := h.controller.CognitoCallback(r.URL.Query().Get("code"))
 	if err != nil {
-		// TODO Handle error
-		fmt.Println("error decoding credential")
-		fmt.Println(err)
+		http.Redirect(w, r, fmt.Sprintf("%s/home?sso=error", clientUrl), http.StatusFound)
+		error.HandleError(w, r, err)
 		return
 	}
-	claims := payload.Claims
-	fmt.Print(payload.Claims)
-	fmt.Println(credential)
-
-	// Build user
-	email, found := claims["email"].(string)
-	if !found {
-		// TODO Handle error
-		fmt.Println("error getting email from payload")
-		return
-	}
-
-	emailVerified, found := claims["email_verified"].(bool)
-	if !found {
-		// TODO Handle error
-		fmt.Println("error getting email_verified from claims")
-		return
-	}
-
-	name, found := claims["name"].(string)
-	if !found {
-		// TODO Handle error
-		fmt.Println("error getting name from claims")
-		return
-	}
-
-	picture, found := claims["picture"].(string)
-	if !found {
-		// TODO Handle error
-		fmt.Println("error getting picture from claims")
-		return
-	}
-
-	givenName, found := claims["given_name"].(string)
-	if !found {
-		// TODO Handle error
-		fmt.Println("error getting given_name from claims")
-		return
-	}
-
-	familyName, found := claims["family_name"].(string)
-	if !found {
-		// TODO Handle error
-		fmt.Println("error getting family_name from claims")
-		return
-	}
-
-	user := &types.User{
-		Email:         email,
-		EmailVerified: emailVerified,
-		Name:          name,
-		Picture:       picture,
-		GivenName:     givenName,
-		FamilyName:    familyName,
-	}
-
-	fmt.Println(user)
-
-	// Create jwt
-	token, err := jwt.NewBuilder().Audience([]string{"family-cloud-api"}).Claim("user", user).Expiration(time.Now().Add(time.Hour * 24 * 7)).Build()
-	if err != nil {
-		// TODO Handle error
-		fmt.Println("error creating jwt")
-		fmt.Println(err)
-		return
-	}
-
-	// Sign Token
-	key, err := jwk.FromRaw([]byte(`secretkey`))
-	if err != nil {
-		fmt.Printf(`failed to create new symmetric key: %s`, err)
-		return
-	}
-	key.Set(jws.KeyIDKey, `secret-key`)
-	signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.HS256, key))
-	if err != nil {
-		// TODO Handle error
-		fmt.Println("error signing jwt")
-		fmt.Println(err)
-		return
-	}
-
-	fmt.Println(string(signedToken))
 
 	// Set cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:    "token",
-		Value:   string(signedToken),
-		Expires: time.Now().Add(time.Hour * 24 * 7),
+		Value:   token.IDToken,
+		Expires: time.Now().Add(time.Second * time.Duration(token.ExpiresIn)),
+		Path:    "/",
 	})
 
 	// Redirect to frontend
-	http.Redirect(w, r, "http://localhost:4200/home?sso=success", http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf("%s/home?sso=success", clientUrl), http.StatusFound)
 }

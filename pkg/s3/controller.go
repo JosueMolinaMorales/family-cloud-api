@@ -10,8 +10,8 @@ import (
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/types"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go/aws"
 )
 
 // Controller is the interface for the s3 controller
@@ -49,13 +49,8 @@ func (c *controller) ListObjects() (*types.Folder, *error.RequestError) {
 		IsDir:        true,
 	}
 
-	// Set a timeout for the request
-	// if the request takes longer than 5 seconds, cancel it
-	ctx, cancel := context.WithTimeout(nil, 5*time.Second)
-	defer cancel()
-
 	for {
-		res, err := c.s3Client.ListObjects(ctx, &s3.ListObjectsV2Input{
+		res, err := c.s3Client.ListObjects(context.Background(), &s3.ListObjectsV2Input{
 			Bucket:            &bucket,
 			ContinuationToken: continuationToken,
 		})
@@ -189,7 +184,6 @@ func (c *controller) calculateFolderSize(bucket string, prefix string) (int64, *
 		}
 
 		// Get the files in this folder
-		fmt.Println(len(res.Contents))
 		for _, item := range res.Contents {
 			if item.Key == nil {
 				continue

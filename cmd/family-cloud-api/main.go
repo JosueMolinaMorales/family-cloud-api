@@ -15,5 +15,6 @@ func main() {
 	server := server.Build(logger)
 	port := config.EnvVars.GetPort()
 
+	logger.Info("Starting server on port ", port)
 	http.ListenAndServe(fmt.Sprintf(":%s", port), server)
 }

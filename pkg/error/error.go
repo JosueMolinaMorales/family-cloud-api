@@ -34,7 +34,7 @@ type RequestError struct {
 func (e *RequestError) Error() string {
 	// Log error if status is 500
 	if e.Status == InternalServerError {
-		e.Logger.Error(e.Msg)
+		e.Logger.Error(e.Err.Error())
 	}
 
 	return e.Msg
@@ -55,7 +55,7 @@ func HandleError(w http.ResponseWriter, r *http.Request, err *RequestError) {
 	errObj := struct {
 		Message    string `json:"message"`
 		StatusCode int    `json:"status_code"`
-	}{Message: err.Msg, StatusCode: int(err.Status)}
+	}{Message: err.Error(), StatusCode: int(err.Status)}
 
 	switch err.Status {
 	case BadRequestError:
