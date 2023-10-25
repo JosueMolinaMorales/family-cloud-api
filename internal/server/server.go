@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/aws"
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/auth"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/s3"
@@ -36,7 +36,7 @@ func Build(logger log.Logger) *chi.Mux {
 
 	// Handlers
 	r.Mount("/auth", auth.Routes(auth.NewController(logger)))
-	r.Mount("/s3", s3.Routes(s3.NewController(logger, config.NewAwsDriver(logger))))
+	r.Mount("/s3", s3.Routes(s3.NewController(logger, aws.NewS3Driver(logger))))
 
 	// Print routes
 	printEstablishedRoutes(r, logger)

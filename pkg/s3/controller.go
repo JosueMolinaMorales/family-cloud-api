@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
+	api_aws "github.com/JosueMolinaMorales/family-cloud-api/internal/config/aws"
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/types"
@@ -25,7 +25,7 @@ type Controller interface {
 }
 
 // NewController creates a new controller
-func NewController(logger log.Logger, s3Client config.AwsDriver) Controller {
+func NewController(logger log.Logger, s3Client api_aws.S3Driver) Controller {
 	return &controller{
 		logger:   logger,
 		s3Client: s3Client,
@@ -34,7 +34,7 @@ func NewController(logger log.Logger, s3Client config.AwsDriver) Controller {
 
 type controller struct {
 	logger   log.Logger
-	s3Client config.AwsDriver
+	s3Client api_aws.S3Driver
 }
 
 func (c *controller) ListObjects() (*types.Folder, *error.RequestError) {

@@ -1,4 +1,4 @@
-package config
+package aws
 
 import (
 	"context"
@@ -12,30 +12,30 @@ import (
 )
 
 // AwsDriver is the interface for the aws driver
-type AwsDriver interface {
+type S3Driver interface {
 	ListObjects(ctx context.Context, params *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, *error.RequestError)
 	UploadObject(ctx context.Context, params *s3.PutObjectInput) (string, *error.RequestError)
 }
 
-// NewAwsDriver creates a new aws driver
-func NewAwsDriver(logger log.Logger) AwsDriver {
+// NewS3Driver creates a new s3 driver
+func NewS3Driver(logger log.Logger) S3Driver {
 	cfg, err := aws_config.LoadDefaultConfig(context.Background(), aws_config.WithRegion("us-east-1"), aws_config.WithSharedConfigProfile("personal"))
 	if err != nil {
 		panic(err)
 	}
 
-	return &awsDriver{
+	return &s3Driver{
 		client: s3.NewFromConfig(cfg),
 		logger: logger,
 	}
 }
 
-type awsDriver struct {
+type s3Driver struct {
 	client *s3.Client
 	logger log.Logger
 }
 
-func (a *awsDriver) UploadObject(ctx context.Context, params *s3.PutObjectInput) (string, *error.RequestError) {
+func (a *s3Driver) UploadObject(ctx context.Context, params *s3.PutObjectInput) (string, *error.RequestError) {
 	pc := s3.NewPresignClient(a.client)
 	presignedURL, err := pc.PresignPutObject(ctx, params, s3.WithPresignExpires(time.Minute*15))
 	if err != nil {
@@ -45,7 +45,7 @@ func (a *awsDriver) UploadObject(ctx context.Context, params *s3.PutObjectInput)
 	return presignedURL.URL, nil
 }
 
-func (a *awsDriver) ListObjects(ctx context.Context, params *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, *error.RequestError) {
+func (a *s3Driver) ListObjects(ctx context.Context, params *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, *error.RequestError) {
 	res, err := a.client.ListObjectsV2(ctx, params)
 	if err != nil {
 		fmt.Println(err)
