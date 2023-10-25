@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-// AwsDriver is the interface for the aws driver
+// S3Driver is the interface for the aws driver
 type S3Driver interface {
 	ListObjects(ctx context.Context, params *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, *error.RequestError)
 	UploadObject(ctx context.Context, params *s3.PutObjectInput) (string, *error.RequestError)
