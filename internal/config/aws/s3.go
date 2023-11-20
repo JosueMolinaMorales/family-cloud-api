@@ -15,11 +15,12 @@ import (
 type S3Driver interface {
 	ListObjects(ctx context.Context, params *s3.ListObjectsV2Input) (*s3.ListObjectsV2Output, *error.RequestError)
 	UploadObject(ctx context.Context, params *s3.PutObjectInput) (string, *error.RequestError)
+	DownloadObject(ctx context.Context, params *s3.GetObjectInput) (string, *error.RequestError)
 }
 
 // NewS3Driver creates a new s3 driver
 func NewS3Driver(logger log.Logger) S3Driver {
-	cfg, err := aws_config.LoadDefaultConfig(context.Background(), aws_config.WithRegion("us-east-1"), aws_config.WithSharedConfigProfile("personal"))
+	cfg, err := aws_config.LoadDefaultConfig(context.Background(), aws_config.WithRegion("us-east-1"), aws_config.WithSharedConfigProfile("default"))
 	if err != nil {
 		panic(err)
 	}
@@ -40,6 +41,16 @@ func (a *s3Driver) UploadObject(ctx context.Context, params *s3.PutObjectInput) 
 	presignedURL, err := pc.PresignPutObject(ctx, params, s3.WithPresignExpires(time.Minute*15))
 	if err != nil {
 		return "", error.NewRequestError(err, error.InternalServerError, "failed to upload object", a.logger)
+	}
+
+	return presignedURL.URL, nil
+}
+
+func (a *s3Driver) DownloadObject(ctx context.Context, params *s3.GetObjectInput) (string, *error.RequestError) {
+	pc := s3.NewPresignClient(a.client)
+	presignedURL, err := pc.PresignGetObject(ctx, params, s3.WithPresignExpires(time.Minute*15))
+	if err != nil {
+		return "", error.NewRequestError(err, error.InternalServerError, "failed to download object", a.logger)
 	}
 
 	return presignedURL.URL, nil

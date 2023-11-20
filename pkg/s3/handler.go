@@ -27,6 +27,7 @@ func Routes(controller Controller) *chi.Mux {
 	r.Get("/folder", h.ListFolder)
 	r.Get("/folder/size", h.GetFolderSize)
 	r.Post("/upload", h.UploadObject)
+	r.Get("/download", h.GetObject)
 
 	// Set middleware for error handling
 	return r
@@ -122,6 +123,19 @@ func (h *handler) GetFolderSize(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) GetObject(w http.ResponseWriter, r *http.Request) {
+	// Get the presigned url
+	url, err := h.controller.GetObject(r.URL.Query().Get("key"))
+	if err != nil {
+		error.HandleError(w, r, err)
+		return
+	}
+
+	// Return the url
+	render.JSON(w, r, struct {
+		URL string `json:"url"`
+	}{
+		URL: url,
+	})
 }
 
 func (h *handler) DeleteObject(w http.ResponseWriter, r *http.Request) {
