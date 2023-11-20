@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/aws"
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
 )
@@ -23,16 +24,31 @@ type JwtToken struct {
 
 type AuthController interface {
 	CognitoCallback(code string) (*JwtToken, *error.RequestError)
+	CognitoRefreshToken(token string) *error.RequestError
 }
 
-func NewController(logger log.Logger) AuthController {
+func NewController(logger log.Logger, cognito aws.CognitoDriver) AuthController {
 	return &controller{
-		logger: logger,
+		logger:  logger,
+		cognito: cognito,
 	}
 }
 
 type controller struct {
-	logger log.Logger
+	cognito aws.CognitoDriver
+	logger  log.Logger
+}
+
+func (c *controller) CognitoRefreshToken(token string) *error.RequestError {
+	// Get user
+	creds, err := c.cognito.GetCredentials(token)
+	if err != nil {
+		return error.NewRequestError(err, error.InternalServerError, "Error getting credentials", c.logger)
+	}
+
+	fmt.Println(creds)
+
+	return nil
 }
 
 func (c *controller) CognitoCallback(code string) (*JwtToken, *error.RequestError) {

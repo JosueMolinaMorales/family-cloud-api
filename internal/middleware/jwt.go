@@ -19,6 +19,7 @@ type ContextKey string
 const (
 	// TokenKey is the key for the token in the context
 	TokenKey ContextKey = "token"
+	JWTKey   ContextKey = "jwt"
 )
 
 // Token is the token after it has been parsed and validated
@@ -63,6 +64,7 @@ func AuthMiddlware(handler http.Handler) http.Handler {
 		// Set the token in the context
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, TokenKey, tokenObj)
+		ctx = context.WithValue(ctx, JWTKey, token)
 		r = r.WithContext(ctx)
 		handler.ServeHTTP(w, r)
 	})

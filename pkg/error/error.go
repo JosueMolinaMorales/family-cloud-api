@@ -33,7 +33,7 @@ type RequestError struct {
 
 func (e *RequestError) Error() string {
 	// Log error if status is 500
-	if e.Status == InternalServerError {
+	if e.Status == InternalServerError && e.Err != nil {
 		e.Logger.Error(e.Err.Error())
 	}
 
