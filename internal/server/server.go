@@ -36,7 +36,7 @@ func Build(logger log.Logger) *chi.Mux {
 
 	// Handlers
 	r.Mount("/auth", auth.Routes(auth.NewController(logger, aws.NewCognitoDriver(logger))))
-	r.Mount("/s3", s3.Routes(s3.NewController(logger, aws.NewS3Driver(logger))))
+	r.Mount("/s3", s3.Routes(s3.NewController(logger)))
 
 	// Print routes
 	printEstablishedRoutes(r, logger)

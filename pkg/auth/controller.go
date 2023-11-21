@@ -11,6 +11,7 @@ import (
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config"
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/aws"
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/middleware"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
 )
 
@@ -25,6 +26,7 @@ type JwtToken struct {
 type AuthController interface {
 	CognitoCallback(code string) (*JwtToken, *error.RequestError)
 	CognitoRefreshToken(token string) *error.RequestError
+	CognitoGetCredentials(token string) (string, *error.RequestError)
 }
 
 func NewController(logger log.Logger, cognito aws.CognitoDriver) AuthController {
@@ -39,15 +41,27 @@ type controller struct {
 	logger  log.Logger
 }
 
-func (c *controller) CognitoRefreshToken(token string) *error.RequestError {
-	// Get user
+func (c *controller) CognitoGetCredentials(token string) (string, *error.RequestError) {
+	// Get the credentials from the token
 	creds, err := c.cognito.GetCredentials(token)
 	if err != nil {
-		return error.NewRequestError(err, error.InternalServerError, "Error getting credentials", c.logger)
+		return "", error.NewRequestError(err, error.InternalServerError, "Error getting credentials", c.logger)
+	}
+	// Create JWT
+	jwt, ok := middleware.SignToken(map[string]interface{}{
+		"access_key_id":     *creds.AccessKeyId,
+		"secret_access_key": *creds.SecretKey,
+		"session_token":     *creds.SessionToken,
+	})
+
+	if !ok {
+		return "", error.NewRequestError(nil, error.InternalServerError, "Error signing token", c.logger)
 	}
 
-	fmt.Println(creds)
+	return jwt, nil
+}
 
+func (c *controller) CognitoRefreshToken(token string) *error.RequestError {
 	return nil
 }
 

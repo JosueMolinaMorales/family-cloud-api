@@ -7,6 +7,17 @@ import (
 )
 
 const (
+	// Development is the development environment
+	Development = "development"
+
+	// Production is the production environment
+	Production = "production"
+
+	// Test is the test environment
+	Test = "test"
+)
+
+const (
 	// PORT specifies the port where the server will be listening
 	// Required for dev, and prod
 	PORT = "PORT"
@@ -40,6 +51,9 @@ const (
 
 	// COGNITO_JWKS_URL specifies the jwks url for cognito
 	COGNITO_JWKS_URL = "COGNITO_JWKS_URL"
+
+	// JWT_PRIVATE_KEY specifies the private key for the jwt
+	JWT_PRIVATE_KEY = "JWT_PRIVATE_KEY"
 )
 
 var (
@@ -89,9 +103,9 @@ func (e *EnvConfig) validate() {
 
 	// Validate environment specific environment variables
 	switch environment {
-	case "development":
+	case Development:
 		e.validateRequired(devRequired)
-	case "production":
+	case Production:
 		e.validateRequired(prodRequired)
 	default:
 		panic(fmt.Sprintf("Invalid environment: %s", environment))
@@ -109,12 +123,43 @@ func (e *EnvConfig) validateRequired(required []string) {
 
 // GetPort returns the port where the server will be listening
 func (e *EnvConfig) GetPort() string {
+	port := e.env[PORT]
+	if port == "" && e.GetEnv() == Development {
+		return "3000"
+	}
 	return e.env[PORT]
 }
 
 // GetEnv returns the environment where the server will be running
 func (e *EnvConfig) GetEnv() string {
 	return e.env[ENV]
+}
+
+func (e *EnvConfig) GetDBURI() string {
+	uri := e.env[DB_URI]
+	if e.GetEnv() == Development && uri == "" {
+		return "mongodb://localhost:27017"
+	}
+	return uri
+}
+
+func (e *EnvConfig) GetClientURL() string {
+	url := e.env[CLIENT_URL]
+	if e.GetEnv() == Development && url == "" {
+		return "http://localhost:4200"
+	}
+	return e.env[CLIENT_URL]
+}
+
+func (e *EnvConfig) GetJWTPrivateKey() string {
+	if e.GetEnv() == Test {
+		return "test"
+	}
+	return e.env[JWT_PRIVATE_KEY]
+}
+
+func (e *EnvConfig) GetCognitoClientID() string {
+	return e.env[COGNITO_CLIENT_ID]
 }
 
 // Get returns the value of a specific environment variable

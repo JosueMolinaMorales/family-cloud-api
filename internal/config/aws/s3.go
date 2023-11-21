@@ -6,8 +6,11 @@ import (
 	"time"
 
 	"github.com/JosueMolinaMorales/family-cloud-api/internal/config/log"
+	"github.com/JosueMolinaMorales/family-cloud-api/internal/middleware"
 	"github.com/JosueMolinaMorales/family-cloud-api/pkg/error"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	aws_config "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -19,11 +22,14 @@ type S3Driver interface {
 }
 
 // NewS3Driver creates a new s3 driver
-func NewS3Driver(logger log.Logger) S3Driver {
+func NewS3Driver(logger log.Logger, creds *middleware.Credentials) S3Driver {
 	cfg, err := aws_config.LoadDefaultConfig(context.Background(), aws_config.WithRegion("us-east-1"), aws_config.WithSharedConfigProfile("default"))
 	if err != nil {
 		panic(err)
 	}
+
+	cfgCreds := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(creds.AccessKey, creds.SecretKey, creds.SessionToken))
+	cfg.Credentials = cfgCreds
 
 	return &s3Driver{
 		client: s3.NewFromConfig(cfg),

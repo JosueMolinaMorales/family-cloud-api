@@ -18,8 +18,9 @@ type ContextKey string
 
 const (
 	// TokenKey is the key for the token in the context
-	TokenKey ContextKey = "token"
-	JWTKey   ContextKey = "jwt"
+	TokenKey       ContextKey = "token"
+	JWTKey         ContextKey = "jwt"
+	CredentialsKey ContextKey = "credentials"
 )
 
 // Token is the token after it has been parsed and validated
@@ -124,4 +125,30 @@ func extractToken(w http.ResponseWriter, r *http.Request) (string, error) {
 	}
 
 	return cookie.Value, nil
+}
+
+func getPrivateKey() interface{} {
+	// Get the private key
+	privateKey := config.EnvVars.Get(config.JWT_PRIVATE_KEY)
+	return []byte(privateKey)
+}
+
+func SignToken(payload map[string]interface{}) (string, bool) {
+	// Create the token
+	claims := jwt.MapClaims{}
+	for key, value := range payload {
+		claims[key] = value
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	// Get the private key
+	privateKey := getPrivateKey()
+
+	// Sign the token
+	signedToken, err := token.SignedString(privateKey)
+	if err != nil {
+		fmt.Println(err)
+		return "", false
+	}
+
+	return signedToken, true
 }

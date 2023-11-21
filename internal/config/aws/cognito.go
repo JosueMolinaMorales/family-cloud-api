@@ -20,7 +20,7 @@ type CognitoDriver interface {
 }
 
 func NewCognitoDriver(logger log.Logger) CognitoDriver {
-	cfg, err := aws_config.LoadDefaultConfig(context.Background(), aws_config.WithRegion("us-east-1"), aws_config.WithSharedConfigProfile("personal"))
+	cfg, err := aws_config.LoadDefaultConfig(context.Background(), aws_config.WithRegion("us-east-1"), aws_config.WithSharedConfigProfile("default"))
 	if err != nil {
 		panic(err)
 	}
@@ -43,9 +43,11 @@ func (c *cognitoDriver) GetCredentials(token string) (*types.Credentials, *error
 		IdentityPoolId: aws.String("us-east-1:93a17f26-9955-4d0e-85ef-f63ca673ea17"),
 		Logins: map[string]string{
 			"cognito-idp.us-east-1.amazonaws.com/us-east-1_iS029qCx0": token,
+			// "accounts.google.com": token,
 		},
 	}, func(o *cognitoidentity.Options) {})
 	if err != nil {
+		fmt.Println("ERROR GETTING ID")
 		fmt.Println(err)
 		return nil, error.NewRequestError(err, error.InternalServerError, "Error getting identity", c.logger)
 	}
@@ -54,14 +56,16 @@ func (c *cognitoDriver) GetCredentials(token string) (*types.Credentials, *error
 		IdentityId: id.IdentityId,
 		Logins: map[string]string{
 			"cognito-idp.us-east-1.amazonaws.com/us-east-1_iS029qCx0": token,
+			// "accounts.google.com": token,
 		},
 	}, func(o *cognitoidentity.Options) {})
 	if err != nil {
+		fmt.Println("ERROR GETTING CREDS")
 		fmt.Println(err)
 		return nil, error.NewRequestError(err, error.InternalServerError, "Error getting credentials", c.logger)
 	}
 
-	return creds.Credentials, error.NewRequestError(nil, error.InternalServerError, "Error getting credentials", c.logger)
+	return creds.Credentials, nil
 }
 
 func (c *cognitoDriver) ValidateToken(token string) (bool, *error.RequestError) {

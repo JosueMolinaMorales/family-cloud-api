@@ -23,6 +23,7 @@ func Routes(controller Controller) *chi.Mux {
 	}
 
 	r.Use(middleware.AuthMiddlware)
+	r.Use(middleware.CognitorCredentialsMiddleware)
 	r.Get("/list", h.ListObjects)
 	r.Get("/folder", h.ListFolder)
 	r.Get("/folder/size", h.GetFolderSize)

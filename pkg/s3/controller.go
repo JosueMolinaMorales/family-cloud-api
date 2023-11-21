@@ -25,10 +25,9 @@ type Controller interface {
 }
 
 // NewController creates a new controller
-func NewController(logger log.Logger, s3Client api_aws.S3Driver) Controller {
+func NewController(logger log.Logger) Controller {
 	return &controller{
-		logger:   logger,
-		s3Client: s3Client,
+		logger: logger,
 	}
 }
 
